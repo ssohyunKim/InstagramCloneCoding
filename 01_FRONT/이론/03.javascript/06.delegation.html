@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        #stage{
+            height: 100vh;
+        }
+
+
+        #stage > div{
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            position: absolute;
+            transition:all 1s cubic-bezier(1,-0.31, 0, 1.21);
+        }
+
+        #stage > div.bigger{
+            transform:scale(2);
+        }
+
+        .box01{
+            background: red;
+            left: 100px;
+            top: 100px;
+        }
+        .box02{
+            background: dodgerblue;
+            right: 200px;
+            top: 300px;
+        }
+        .box03{
+            background: orange;
+            left: 300px;
+            bottom: 100px;
+        }
+
+
+    </style>
+</head>
+<body>
+
+<section id="stage">
+    <div class="box01" data-name="btn01">
+        <button>aa</button>
+    </div>
+    <div class="box02" data-name="btn02"></div>
+    <div class="box03" data-name="btn03"></div>
+</section>
+
+
+<script>
+
+    // 이벤트 위임
+    const btn = document.querySelector('.box01');
+    const stage = document.querySelector('#stage');
+
+    // btn.addEventListener('click', function(e){
+    //     console.log(e.target);
+
+    //     let elem = e.target;
+    //     elem.classList.add('bigger');
+
+    // });
+    stage.addEventListener('click', function(e){
+        let elem = e.target;
+        console.log(elem);
+
+        while(!elem.getAttribute('data-name')){
+            elem = elem.parentNode;
+
+            if(elem.nodeName === 'BODY'){ //종료시점을 설정해주는 것. parent를 계속 찾다가 body가 되면은 종료되게끔
+                elem = null;
+                return; //종료 시키는 역할의 return
+            }
+        }
+
+        if(elem.getAttribute('data-name')){ //data-name을 가지고 있는 버튼1,2,3에만 토글
+            elem.classList.toggle('bigger');
+        }
+
+        if(elem.matches('[data-name="btn01"]')){
+            console.log('1번상자');
+        }else if(elem.matches('[data-name="btn02"]')){
+            console.log('2번상자');
+        }else if(elem.matches('[data-name="btn03"]')){
+            console.log('3번상자');
+        }
+    });
+
+
+</script>
+
+</body>
+</html>

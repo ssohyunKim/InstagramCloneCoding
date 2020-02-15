@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        body{
+            height: 10000px;
+        }
+
+        .box{
+            width: 100px;
+            height: 100px;
+            background: dodgerblue;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            margin: -50px 0 0 -50px;
+            transition:all 1s ease;
+        }
+
+        .box.on{
+            transform:scale(2);
+        }
+
+    </style>
+</head>
+<body>
+
+
+<button class="btn" data-name="btn01">button</button>
+
+<div class="box"></div>
+
+<script>
+
+    // 선택자
+    const btn = document.querySelector('.btn');
+    const box = document.querySelector('.box');
+    
+    //console.log(btn);
+
+    // 이벤트
+    // 1. 클릭이벤트 2. 스크롤이벤트 3. 
+
+    function btnFunc(e){
+        console.log(e);
+
+        //box.classList.add('on');        //jquery에서는 .addClass
+        //box.classList.remove('on'); 
+        box.classList.toggle('on'); 
+    }
+    btn.addEventListener('click',btnFunc);
+
+    // add, remove, toggle
+
+
+    // scroll
+
+    let scrollHeight = pageYOffset + window.innerHeight; //window.innerHeight 는 브라우저가 가지고 있는 높이값
+    let documentHeight = document.body.scrollHeight;
+    
+    //console.log(window.innerHeight);
+    //console.log(documentHeight);
+    window.addEventListener('scroll',function(){
+        console.log(pageYOffset)
+
+        if(pageYOffset >= documentHeight){
+            console.log('end');
+            document.body.style.backgroundColor = 'yellow';
+        }else{
+
+        }
+    });
+
+
+
+
+    // resize
+
+    window.addEventListener('resize', function(e) {
+        console.log(e);
+    });
+
+
+
+
+
+</script>
+</body>
+</html>
