@@ -1,0 +1,482 @@
+-- config>urls.py를 아래와 같이 수정 --
+from django.contrib import admin
+from django.urls import include, path
+from django.conf import settings
+from django.conf.urls.static import static
+
+from django.shortcuts import redirect
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('accounts/', include('accounts.urls')),
+    path('accounts/', include('allauth.urls')),
+    path('post/', include('post.urls', namespace='post')),
+    path('', lambda r: redirect('post:post_list'), name='root')
+]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+-- accounts>urls.py를 아래와 같이 수정 --
+from django.urls import path
+from .views import *
+
+app_name = 'accounts'
+
+urlpatterns = [
+    path('signup/', signup, name='signup'),
+    path('login/', login_check, name='login'),
+    path('logout/', logout, name='logout'),
+    path('follow/', follow, name='follow'),
+]
+
+-- accounts>views.py를 아래와 같이 수정 --
+from django.contrib.auth import authenticate, login
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth import logout as django_logout
+from .forms import SignupForm, LoginForm
+from .models import Profile, Follow
+
+import json
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+
+# 회원가입
+def signup(request):
+    if request.method == 'POST':
+        form = SignupForm(request.POST, request.FILES)
+        if form.is_valid():
+            user = form.save()
+            return redirect('accounts:login')
+    else:
+        form = SignupForm()
+        
+    if request.is_ajax():
+        profile, created_at = Profile.objects.get_or_create(user=user_id)
+
+        if created_at:
+            message = '이미 가입된 사용자입니다!'
+            status = 1
+        else:
+            profile.delete()
+            message = '회원가입 간입가능'
+            status = 0
+
+        context = {
+            'message': message,
+            'status': status,
+        }
+        return HttpResponse(json.dumps(context), content_type="application/json")
+
+        return render(request, 'post/post_list_ajax.html', {
+            'posts': posts,
+            'comment_form': comment_form,
+        })     
+    return render(request, 'accounts/signup.html', {
+        'form': form,
+    })
+
+# 로그인 체크
+def login_check(request):
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+        name = request.POST.get('username')
+        pwd = request.POST.get('password')
+        user = authenticate(username=name, password=pwd)
+        
+        if user is not None:
+            login(request, user)
+            return redirect("/")
+        else:
+            return render(request, 'accounts/login_fail.html')
+    else:
+        form = LoginForm()
+        return render(request, 'accounts/login.html', {"form":form})
+    
+def logout(request):
+    django_logout(request)
+    return redirect("/")
+
+# 팔로우기능 처리
+@login_required
+@require_POST
+def follow(request):
+    from_user = request.user.profile
+    pk = request.POST.get('pk')
+    to_user = get_object_or_404(Profile, pk=pk)
+    follow, created = Follow.objects.get_or_create(from_user=from_user, to_user=to_user)
+    
+    if created:
+        message = '팔로우 시작!'
+        status = 1
+    else:
+        follow.delete()
+        message = '팔로우 취소'
+        status = 0
+        
+    context = {
+        'message': message,
+        'status': status,
+    }
+    return HttpResponse(json.dumps(context), content_type="application/json")
+
+
+-- accounts>forms.py를 아래와 같이 수정 --
+from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
+from .models import Profile
+from django.contrib.auth.models import User
+
+# 로그인 폼
+class LoginForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["username", "password"]
+    
+# 회원가입 폼    
+class SignupForm(UserCreationForm):
+    username = forms.CharField(label='사용자명', widget=forms.TextInput(attrs={
+        'pattern': '[a-zA-Z0-9]+',
+        'title': '특수문자, 공백 입력불가',
+    }))
+    
+    nickname = forms.CharField(label='닉네임')
+    picture = forms.ImageField(label='프로필 사진', required=False)
+    
+    class Meta(UserCreationForm.Meta):
+        fields = UserCreationForm.Meta.fields + ('email',)
+        
+    def clean_nickname(self):
+        nickname = self.cleaned_data.get('nickname')
+        if Profile.objects.filter(nickname=nickname).exists():
+            raise forms.ValidationError('이미 존재하는 닉네임 입니다.')
+        return nickname
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        User = get_user_model()
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('사용중인 이메일 입니다.')
+        return email
+
+    def clean_picture(self):
+        picture = self.cleaned_data.get('picture')
+        if not picture:
+            picture = None
+        return picture
+    
+    def save(self):
+        user = super().save()
+        Profile.objects.create(
+            user=user,
+            nickname=self.cleaned_data['nickname'],
+            picture=self.cleaned_data['picture'],
+        )
+        return user
+
+-- post>urls.py를 아래와 같이 수정 --
+from django.urls import path
+from .views import *
+
+app_name = 'post'
+
+urlpatterns = [
+    path('', post_list, name='post_list'),
+    path('new', post_new, name='post_new'),
+    path('edit/<int:pk>/', post_edit, name='post_edit'),
+    path('delete/<int:pk>/', post_delete, name='post_delete'),
+    path('like', post_like, name='post_like'),
+    path('bookmark', post_bookmark, name='post_bookmark'),
+    path('comment/new', comment_new, name='comment_new'),
+    path('comment_detail/new', comment_new_detail, name='comment_new_detail'),
+    path('comment/delete', comment_delete, name='comment_delete'),
+    path('explore/tags/<tag>/', post_list, name='post_search'),
+    path('<int:pk>/', post_detail, name='post_detail'),
+    path('<username>/list/detail', my_post_list, name='my_post_list'),
+]
+
+
+-- post>views.py를 아래와 같이 수정 --
+import json
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.views.decorators.http import require_POST
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from .forms import PostForm, CommentForm
+
+from .models import Post, Like, Comment,Tag
+from django.db.models import Count
+
+# 디테일페이지처리
+def post_detail(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    comment_form = CommentForm()
+    
+    return render(request, 'post/post_detail.html', {
+        'comment_form': comment_form,
+        'post': post,
+    })
+
+# 마이페이지페이지처리
+@login_required
+def my_post_list(request, username):
+    user = get_object_or_404(get_user_model(), username=username)
+    user_profile = user.profile
+    
+    target_user = get_user_model().objects.filter(id=user.id).select_related('profile') \
+        .prefetch_related('profile__follower_user__from_user', 'profile__follow_user__to_user')
+        
+    post_list = user.post_set.all()
+    
+    all_post_list = Post.objects.all()
+    
+    return render(request, 'post/my_post_list.html', {
+        'user_profile': user_profile,
+        'target_user': target_user,
+        'post_list': post_list,
+        'all_post_list': all_post_list,
+        'username': username,
+    })
+
+# 포스트리스트보여주는(페이지처리, 태그검색, 페이징, 최적화)
+def post_list(request, tag=None):
+    tag_all = Tag.objects.annotate(num_post=Count('post')).order_by('-num_post')
+    
+    if tag:
+        post_list = Post.objects.filter(tag_set__name__iexact=tag) \
+            .prefetch_related('tag_set', 'like_user_set__profile', 'comment_set__author__profile',
+                              'author__profile__follower_user', 'author__profile__follower_user__from_user') \
+            .select_related('author__profile')
+    else:
+        post_list = Post.objects.all() \
+            .prefetch_related('tag_set', 'like_user_set__profile', 'comment_set__author__profile',
+                              'author__profile__follower_user', 'author__profile__follower_user__from_user') \
+            .select_related('author__profile')
+
+    comment_form = CommentForm()
+    
+    paginator = Paginator(post_list, 3)
+    page_num = request.POST.get('page')
+    
+    try:
+        posts = paginator.page(page_num)
+    except PageNotAnInteger:
+        posts = paginator.page(1)
+    except EmptyPage:
+        posts = paginator.page(paginator.num_pages)
+        
+    if request.is_ajax():
+        return render(request, 'post/post_list_ajax.html', {
+            'posts': posts,
+            'comment_form': comment_form,
+        })
+    
+    if request.method == 'POST':
+        tag = request.POST.get('tag')
+        tag_clean = ''.join(e for e in tag if e.isalnum())
+        return redirect('post:post_search', tag_clean)
+    
+    if request.user.is_authenticated:
+        username = request.user
+        user = get_object_or_404(get_user_model(), username=username)
+        user_profile = user.profile
+        follow_set = request.user.profile.get_following
+        follow_post_list = Post.objects.filter(author__profile__in=follow_set)
+        
+        return render(request, 'post/post_list.html', {
+            'user_profile': user_profile,
+            'tag': tag,
+            'posts': posts,
+            'follow_post_list': follow_post_list,
+            'comment_form': comment_form,
+            'tag_all': tag_all,
+        })
+    else:
+        return render(request, 'post/post_list.html', {
+            'tag': tag,
+            'posts': posts,
+            'comment_form': comment_form,
+            'tag_all': tag_all,
+        })
+    
+# 새글작성
+@login_required
+def post_new(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            post.tag_save()
+            messages.info(request, '새 글이 등록되었습니다')
+            return redirect('post:post_list')
+    else:
+        form = PostForm()
+    return render(request, 'post/post_new.html', {
+        'form': form,
+    })
+
+# 글 수정
+@login_required
+def post_edit(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    if post.author != request.user:
+        messages.warning(request, '잘못된 접근입니다')
+        return redirect('post:post_list')
+    
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            post = form.save()
+            post.tag_set.clear()
+            post.tag_save()
+            messages.success(request, '수정완료')
+            return redirect('post:post_list')
+    else:
+        form = PostForm(instance=post)
+    return render(request, 'post/post_edit.html', {
+        'post': post,
+        'form': form,
+    })
+
+# 좋아요처리
+@login_required
+@require_POST
+def post_like(request):
+    pk = request.POST.get('pk', None)
+    post = get_object_or_404(Post, pk=pk)
+    post_like, post_like_created = post.like_set.get_or_create(user=request.user)
+
+    if not post_like_created:
+        post_like.delete()
+        message = "좋아요 취소"
+    else:
+        message = "좋아요"
+
+    context = {'like_count': post.like_count,
+               'message': message}
+
+    return HttpResponse(json.dumps(context), content_type="application/json")
+
+# 북마크처리
+@login_required
+@require_POST
+def post_bookmark(request):
+    pk = request.POST.get('pk', None)
+    post = get_object_or_404(Post, pk=pk)
+    post_bookmark, post_bookmark_created = post.bookmark_set.get_or_create(user=request.user)
+
+    if not post_bookmark_created:
+        post_bookmark.delete()
+        message = "북마크 취소"
+    else:
+        message = "북마크"
+
+    context = {'bookmark_count': post.bookmark_count,
+               'message': message}
+
+    return HttpResponse(json.dumps(context), content_type="application/json")    
+    
+# 글 삭제처리
+@login_required
+def post_delete(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    if post.author != request.user or request.method == 'GET':
+        messages.warning(request, '잘못된 접근입니다.')
+        return redirect('post:post_list')
+
+    if request.method == 'POST':
+        post.delete()
+        # messages.success(request, '삭제완료')
+        return redirect('post:post_list')
+
+# 댓글 생성
+@login_required
+def comment_new(request):
+    pk = request.POST.get('pk')
+    post = get_object_or_404(Post, pk=pk)
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.author = request.user
+            comment.post = post
+            comment.save()
+            return render(request, 'post/comment_new_ajax.html', {
+                'comment': comment,   
+            })
+    return redirect("post:post_list")
+
+# 디테일페이지 새댓글 처리
+@login_required
+def comment_new_detail(request):
+    pk = request.POST.get('pk')
+    post = get_object_or_404(Post, pk=pk)
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.author = request.user
+            comment.post = post
+            comment.save()
+            return render(request, 'post/comment_new_detail_ajax.html', {
+                'comment': comment,
+            })
+
+# 댓글 삭제
+@login_required
+def comment_delete(request):
+    pk = request.POST.get('pk')
+    comment = get_object_or_404(Comment, pk=pk)
+    if request.method == 'POST' and request.user == comment.author:
+        comment.delete()
+        message = '삭제완료'
+        status = 1
+    
+    else:
+        message = '잘못된 접근입니다'
+        status = 0
+        
+    return HttpResponse(json.dumps({'message': message, 'status': status, }), content_type="application/json")
+
+
+-- post>forms.py를 아래와 같이 수정 --
+from django import forms
+from .models import Comment, Post
+
+# 새글 작성 폼
+class PostForm(forms.ModelForm):
+    photo = forms.ImageField(label='', required=False)
+    content = forms.CharField(label='', widget=forms.Textarea(attrs={
+        'class': 'post-new-content',
+        'rows': 5,
+        'cols': 50,
+        'placeholder': '140자 까지 등록 가능합니다'
+    }))
+    
+    class Meta:
+        model = Post
+        fields = ['photo', 'content']
+    
+# 댓글 작성 폼
+class CommentForm(forms.ModelForm):
+    content = forms.CharField(label='', widget=forms.TextInput(attrs={
+        'class': 'comment-form',
+        'size': '70px',
+        'placeholder': '댓글 달기...',
+        'maxlength': '40', }))
+    
+    class Meta:
+        model = Comment
+        fields = ['content']
+
+
+
+
+

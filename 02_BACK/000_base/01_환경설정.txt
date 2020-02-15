@@ -1,0 +1,88 @@
+mkdir instaclone
+cd instaclone
+pip install virtualenv
+virtualenv venv
+pip list
+pip install django
+pip list
+django-admin startproject config .
+
+settings.py에서 28번째줄 '*'
+python manage.py migrate
+
+User 모델 추적해 보기
+venv/~site-package/django/contrib/auth/models.py
+
+python manage.py runserver 0:80
+
+sqlite.db 내용 확인해보기
+python manage.py createsuperuser
+내용 추가된내용 확인해보기
+
+python manage.py startapp sample
+
+models 생성후 
+python manage.py shell 명령으로 crud 실습
+
+-- jupyter notebook --
+pip install django-extensions
+
+settings.py 수정
+INSTALLED_APPS = [
+'sample',
+'django_extensions',
+]
+
+pip3 install "ipython[notebook]"
+python3 manage.py shell_plus --notebook
+
+
+본격적인 앱 생성 작업
+python manage.py startapp sample
+
+settings.py 수정
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'sample',
+]
+
+settings.py 수정2 - 템플릿 위치 변경
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            os.path.join('BASE_DIR', 'config', 'templates'),
+        ],
+
+settings.py 수정3 - 시간 및 staticfile 위치 변경
+LANGUAGE_CODE = 'ko'
+
+TIME_ZONE = 'Asia/Seoul'
+
+USE_I18N = True
+
+USE_L10N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/3.0/howto/static-files/
+STATIC_URL = '/static/'
+STATICFILE_DIRS = [
+    os.path.join('BASE_DIR', 'config', 'static'),
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+#MEDIA File
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+LOGIN_REDIRECT_URL = '/'
+
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"

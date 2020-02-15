@@ -1,0 +1,1168 @@
+
+-- post>template>layout.html를 아래와 같이 수정 --
+
+-- post>template>post>post_list.html를 아래와 같이 수정 --
+-- post>template>post>script.html를 아래와 같이 수정 --
+
+-- post>template>post>comment_new_ajax.html를 아래와 같이 수정 --
+-- post>template>post>comment_new_detail_ajax.html를 아래와 같이 수정 --
+-- post>template>post>post_list_ajax.html를 아래와 같이 수정 --
+
+-- post>template>post>post_new.html를 아래와 같이 수정 --
+-- post>template>post>post_edit.html를 아래와 같이 수정 --
+
+-- post>template>post>my_post_list.html를 아래와 같이 수정 --
+-- post>template>post>post_detail.html를 아래와 같이 수정 --
+-- post>template>post>script_ajax_detail.html를 아래와 같이 수정 --
+
+
+
+
+
+-- post>template>layout.html를 아래와 같이 수정 --
+{% extends "layout.html" %}
+
+-- post>template>post>post_list.html를 아래와 같이 수정 --
+{% extends "post/layout.html" %}
+{% load static %}
+{% load post_extras %}
+{% block head %}
+
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/common.css' %}">
+<style>
+    .detail_link{
+        display:block;
+        width:100%;
+        height:100%;
+    }
+</style>
+
+{% endblock %}
+
+
+
+{% block content %}
+<!-- hidden -->
+{% if user.profile.get_following %}
+<div class="hidden_menu">
+    <div class="scroll_inner">
+        {% for following in user.profile.get_following %}
+        <div class="user">
+            <div class="thumb_img">
+                <img src="{{ following.picture.url }}" alt="">
+            </div>
+            <div class="id">{{ following.nickname }}</div>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+{% else %}
+<div class="hidden_menu">
+    <div class="scroll_inner">
+        <div class="notic">
+            팔로우한 유저가 없습니다 팔로우를 해주세요
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- main -->
+<section id="main_container">
+        <div class="inner">
+            <div class="contents_box">
+                {% for post in posts %}
+                <article class="contents">
+                    <header class="top">
+                        <div class="user_container">
+                            <div class="profile_img">
+                                {% if post.author.profile.picture %}
+                                <img src="{{ post.author.profile.picture.url }}" alt="프로필이미지">
+                                {% else %}
+                                <img src="{% static 'imgs/thumb.jpeg'%}" alt="프로필이미지">
+                                {% endif %}
+                            </div>
+                            <div class="user_name">
+                                <div class="nick_name m_text">{{ post.author.profile.nickname }} 
+                                    <!-- {{ post.id }} -->
+                                </div>
+                                <div class="country s_text">Seoul, South Korea</div>
+                            </div>
+                            <div>
+                                <!-- <form action="{% url 'post:post_delete' post.pk %}" method="post">
+                                    {% csrf_token %}
+                                    <input type="submit" value="삭제">
+                                    
+                                </form> -->
+                                
+                            </div>
+                        </div>
+
+                        <div class="sprite_more_icon" data-name="more">
+                            <ul class="toggle_box">
+                                <li>
+                                {% if user.profile in post.author.profile.get_follower %}        
+                                <input type="submit" class="follow" value="팔로잉" data-name="follow" name="{{ post.author.profile.id }}">
+                                {% else %}
+                                <input type="submit" class="follow" value="팔로우" data-name="follow" name="{{ post.author.profile.id }}">                                    
+                                {% endif %}
+                                </li>
+                                {% if post.author == user %}               
+                                <li>
+                                    <a class="post-edit" href="{% url 'post:post_edit' post.pk %}">수정</a>
+                                </li>
+                                <li>
+                                    <form class="post-delete-form" action="{% url 'post:post_delete' post.pk %}" method="post">
+                                        {% csrf_token %}
+                                        <input type="submit" class="post-delete" value="삭제">
+                                    </form>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        
+                    </header>
+
+                    <div class="img_section">
+                        <div class="trans_inner">
+                            <div><img src="{{ post.photo.url }}" alt="visual01"></div>
+                        </div>
+                    </div>
+
+                    <div class="bottom_icons">
+                        <div class="left_icons">
+                            <div class="heart_btn">
+                                {% if user in post.like_user_set.all %}
+                                <div class="sprite_heart_icon_outline on" name="{{ post.id }}" data-name="heartbeat"></div>
+                                {% else %}
+                                <div class="sprite_heart_icon_outline" name="{{ post.id }}" data-name="heartbeat"></div>
+                                {% endif %}
+                            </div>
+                            <a href="{% url 'post:post_detail' post.pk %}"><div class="sprite_bubble_icon"></div></a>
+                            <!-- <div class="sprite_share_icon" data-name="share"></div> -->
+                        </div>
+                        <div class="right_icon">
+                            {% if user in post.bookmark_user_set.all %}
+                            <div class="sprite_bookmark_outline on" name="{{ post.id }}" data-name="bookmark"></div>
+                            {% else %}
+                            <div class="sprite_bookmark_outline" name="{{ post.id }}" data-name="bookmark"></div>
+                            {% endif%}
+                        </div>
+                    </div>
+
+                    <div class="likes m_text">
+                        
+                        <span id="like-count-{{ post.id }}">좋아요{{ post.like_count }}개</span>
+                        <span id="bookmark-count-{{ post.id }}">북마크{{ post.bookmark_count}}개</span>
+                        
+                    </div>
+                    
+                    <div class="content">{{ post|add_link|safe|linebreaksbr }}</div>
+                    
+                    
+                    <div class="comment_container">
+                        <div class="comment" id="comment-list-ajax-post{{post.id}}">
+                            {% for comment in post.comment_set.all %}
+                            <div class="comment-detail" id="comment{{ comment.id }}">
+                                <div class="nick_name m_text">{{ comment.author.profile.nickname}}</div>
+                                <div>{{comment.content}}</div>
+                                {% if user == comment.author %}
+    <input type="button" class="del-comment" data-name="comment_delete" value="삭제" name="{{ comment.id }}">
+                                {% endif %}
+
+                                <div class="time">{{ comment.created_at|timesince }}</div>
+                            </div>
+                            {% endfor %}
+                            
+                        </div>
+                    </div>
+
+                    <div class="timer">{{ post.created_at|timesince }}</div>
+
+                    <div class="comment_field" id="add-comment-post{{post.id}}">
+                        {% if user.is_authenticated %}
+                        {{ comment_form }}
+                        
+                        <div class="upload_btn m_text" name="{{post.id}}" data-name="comment">게시</div>
+                        {% else %}
+                        {{ comment_form }}
+                        
+                        <div class="upload_btn m_text" name="{{post.id}}" data-name="comment" onclick="alert('댓글을 작성하려면 로그인이 필요합니다')">게시</div>
+                        {% endif%}
+                    </div>
+                    
+                </article>
+                {% endfor %}
+                <div id="post_list_ajax"></div>
+                <input type="hidden" id="page" value="2">
+            </div>
+            
+            
+
+            <div class="side_box" style="">
+                {% if user_profile %}
+                <div class="user_profile">
+                    <div class="profile_thumb">
+                        <img src="{{ user_profile.picture.url }}" alt="프로필사진">
+                    </div>
+                    <div class="detail">
+                        <div class="id m_text">{{ user_profile.user }}</div>
+                        <div class="ko_name">{{ user_profile.nickname }}</div>
+                    </div>
+                </div>
+                {% else %}
+                
+                <div class="user_profile">
+                    <div class="profile_thumb">
+                        <img src="{% static 'imgs/thumb.jpeg' %}" alt="프로필사진">
+                    </div>
+                    <div class="detail">
+                    </div>
+                </div>
+                
+                {% endif %}
+
+                <article class="story">
+                    <header class="story_header">
+                        <div>스토리</div>
+                        <div class="more">모두 보기</div>
+                    </header>
+                    
+                    <div class="scroll_inner">
+                        {% if follow_post_list %}
+                            {% for post in follow_post_list %}
+                                <div class="thumb_user">
+                                    <div class="profile_thumb">
+                                        <img src="{{ post.photo.url }}" alt="프로필사진">
+                                    </div>
+                                    <div class="detail">
+                                        <div class="id">{{ post.content }}</div>
+                                        <div class="time">{{ post.updated_at|timesince }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </article>
+
+                <article class="recommend">
+                    <header class="reco_header">
+                        <div>회원님을 위한 추천</div>
+                        <div class="more">모두 보기</div>
+                    </header>
+                    {% for post in posts|slice:"2:3" %}
+                    <div class="thumb_user">
+                        <div class="profile_thumb">
+                            <img src="{{ post.photo.url }}" alt="프로필사진">
+                        </div>
+                        <div class="detail">
+                            <div class="id">{{ post.content }}</div>
+                            <div class="time">{{ post.updated_at|timesince }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </article>
+            </div>
+
+
+        </div>
+    </section>
+
+{% include "post/script_ajax.html" %}
+{% endblock %}
+
+-- post>template>post>script.html를 아래와 같이 수정 --
+<script type="text/javascript">
+(function(){
+    const delegation = document.querySelector('.contents_box');
+    const side_box = document.querySelector('.side_box');
+    const header = document.querySelector('#header');
+    
+    
+    
+    function delegationFunc(e) {
+        let elem = e.target;
+        
+        console.log(elem);
+        
+        while (!elem.getAttribute('data-name')){
+            elem = elem.parentNode;
+            
+            if (elem.nodeName === 'BODY'){
+                elem = null;
+                return;
+            }
+        }
+        
+        if (elem.matches('[data-name="heartbeat"]')){
+            console.log('하트!');
+
+            var pk = elem.getAttribute('name');
+            console.log(pk);
+
+            $.ajax({
+                type: "POST",
+                url: "{% url 'post:post_like' %}",
+                data: {'pk': pk, 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                dataType: "json",
+                success: function (response){
+                    // alert('성공!');
+                    var likeCount = document.querySelector('#like-count-'+pk);
+                    likeCount.innerHTML = '좋아요' + response.like_count + '개';
+                },
+                error: function (request, status, error) {
+                    alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                },
+            });
+            
+            
+        }else if (elem.matches('[data-name="bookmark"]')){
+            console.log('북마크!');
+
+            var pk = elem.getAttribute('name');
+            console.log(pk);
+
+            $.ajax({
+                type: "POST",
+                url: "{% url 'post:post_bookmark' %}",
+                data: {'pk': pk, 'csrfmiddlewaretoken': '{{ csrf_token }}' },
+                dataType: "json",
+                success: function (response){
+                    // alert('성공!');
+                    var bookmarkCount = document.querySelector('#bookmark-count-'+pk);
+                    bookmarkCount.innerHTML = '북마크' + response.bookmark_count + '개';
+                },
+                error: function (request, status, error) {
+                    alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                },
+            });
+        }else if (elem.matches('[data-name="comment"]')){
+            console.log('새댓글')
+            var pk = elem.getAttribute('name');
+            var content = document.querySelector('#add-comment-post'+pk+'>input[type=text]').value;
+            console.log(content);
+            
+            if(content.length > 140) {
+                alert("댓글은 최대 140자 입력 가능합니다. 현재 글자수 :"+content.length);
+                return;
+            }
+            
+            if(content.length == 0) {
+                alert("글자를 하나라도 넣어주세요. 현재 글자수 :"+content.length);
+                return;
+            }
+            
+            
+            $.ajax({
+                type: "POST",
+                url: "{% url 'post:comment_new' %}",
+                data: {
+                    'pk': pk,
+                    'content': content,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                },
+                dataType: "html",
+                success: function(data, textStatus, jqXHR){
+                    console.log("성공!")
+                    document.querySelector("#comment-list-ajax-post"+pk).insertAdjacentHTML("afterbegin", data);
+                    
+                },
+                error: function(request, status, error){
+                    alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                },
+            });
+        }else if(elem.matches('[data-name="comment_delete"]')){
+            var pk = elem.getAttribute('name');
+
+            $.ajax({
+                type: "POST",
+                url: "{% url 'post:comment_delete' %}",
+                data: {
+                    'pk': pk,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                },
+                dataType: "json",
+                success: function(response){
+                    if(response.status){
+                        document.querySelector('#comment'+pk).remove();
+                    }
+                },
+                error: function(request, status, error){
+                    alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                } 
+            });
+        }else if(elem.matches('[data-name="follow"]')){
+            console.log("팔로우!");
+            var pk = elem.getAttribute('name');
+            
+            $.ajax({
+                type:"POST",
+                url: "{% url 'accounts:follow' %}",
+                data: {
+                    'pk': pk,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                },
+                dataType: "json",
+                success: function(response){
+                    console.log("성공");
+                    if(response.status){
+                        document.querySelector('input.follow[name=\''+pk+'\']').value="팔로잉";
+                    }else{
+                        document.querySelector('input.follow[name=\''+pk+'\']').value="팔로우";
+                    }
+                },
+                error: function(request, status, error){
+                    alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                }
+            })
+        }
+        elem.classList.toggle('on');
+    }
+    
+    
+    function resizefunc(){
+        // console.log('리사이즈')
+        if(pageYOffset >= 10){
+            let calcWidth = (window.innerWidth * 0.5) + 167;
+            if(side_box){
+                side_box.style.left = calcWidth + "px";
+            }
+        }
+    }
+    
+    function scrollfunc(){
+        var scrollHeight = pageYOffset + window.innerHeight;
+        var documentHeight = document.body.scrollHeight;
+        
+        if (pageYOffset >= 10){
+            header.classList.add('on');
+            resizefunc();
+            if(side_box){
+                side_box.classList.add('on');
+            }
+        } else {
+            header.classList.remove('on');
+            if(side_box){
+                side_box.classList.remove('on');
+                side_box.removeAttribute('style');
+            }
+        }
+        
+        if(scrollHeight >= documentHeight){
+            var page = document.querySelector('#page').value;
+            
+            console.log(page);
+            
+            var end_page = {{ posts.paginator.num_pages }}
+            if(page > end_page){
+                return;
+            }
+            document.querySelector('#page').value = parseInt(page) + 1;
+            callMorePostAjax(page);
+        }
+    }
+    
+    function callMorePostAjax(page) {
+        var end_page = {{ posts.paginator.num_pages }};
+        
+        
+        
+        if(page > end_page){
+            return;
+        }
+        $.ajax({
+            type: 'POST',
+            url: "{% url 'post:post_list' %}",
+            data: {
+                'page': page,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            dataType: 'html',
+            success: addMorePostAjax,
+            error: function(request, status, error){
+                alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+            }
+        });
+    }
+ 
+    function addMorePostAjax(data, textStatus, jqXHR) {
+    let post = document.querySelector('#post_list_ajax');
+        
+        post.insertAdjacentHTML("beforeend", data);
+        
+        
+    }
+
+
+    window.addEventListener('resize', resizefunc);
+    window.addEventListener('scroll', scrollfunc);
+    delegation.addEventListener('click', delegationFunc);
+})();
+</script>
+
+-- post>template>post>comment_new_ajax.html를 아래와 같이 수정 --
+<div class="comment-detail" id="comment{{ comment.id }}">
+    
+    <!-- <div class="comment"> -->
+        <div class="nick_name m_text">{{ comment.author.profile.nickname }}</div>
+        <div>{{ comment.content }}</div>
+        
+            {% if user == comment.author %}
+            <input type="button" class="del-comment" data-name="comment_delete" value="삭제" name="{{ comment.id }}">
+            {% endif %}
+        
+        <div class="time">{{ comment.created_at|timesince }}</div>
+    <!-- </div> -->
+</div>
+
+
+-- post>template>post>comment_new_detail_ajax.html를 아래와 같이 수정 --
+<div class="user_container-detail" id="comment{{ comment.id }}">
+    <div class="user"><img src="{{ comment.author.profile.picture.url }}" alt="user"></div>
+    <div class="comment">
+        <span class="user_id">{{ comment.author.profile.nickname }}</span>
+        <span>{{ comment.content }}</span>
+        <span>
+            {% if user == comment.author %}
+            <input type="button" class="del-comment" data-name="comment_delete" value="삭제" name="{{ comment.id }}">
+            {% endif %}
+        </span>
+        <div class="time">{{ comment.created_at|timesince }}</div>
+    </div>
+</div>
+
+
+-- post>template>post>post_list_ajax.html를 아래와 같이 수정 --
+{% load static %}
+
+{% for post in posts %}
+<article class="contents">
+    <header class="top">
+        <div class="user_container">
+            <div class="profile_img">
+                {% if post.author.profile.picture %}
+                <img src="{{ post.author.profile.picture.url }}" alt="프로필이미지">
+                {% else %}
+                <img src="{% static 'imgs/thumb.jpeg'%}" alt="프로필이미지">
+                {% endif %}
+            </div>
+            <div class="user_name">
+                <div class="nick_name m_text">{{ post.author.profile.nickname }} {{ post.id }}</div>
+                <div class="country s_text">Seoul, South Korea</div>
+            </div>
+            <div>
+                <form action="{% url 'post:post_delete' post.pk %}" method="post">
+                    {% csrf_token %}
+                    <input type="submit" value="삭제">
+
+                </form>
+
+            </div>
+        </div>
+
+        <div class="sprite_more_icon" data-name="more">
+            <ul class="toggle_box">
+                <li>
+                {% if user.profile in post.author.profile.get_follower %}        
+                <input type="submit" class="follow" value="팔로잉" data-name="follow" name="{{ post.author.profile.id }}">
+                {% else %}
+                <input type="submit" class="follow" value="팔로우" data-name="follow" name="{{ post.author.profile.id }}">                                    
+                {% endif %}
+                </li>
+                {% if post.author == user %}               
+                <li>
+                    <a class="post-edit" href="{% url 'post:post_edit' post.pk %}">수정</a>
+                </li>
+                <li>
+                    <form class="post-delete-form" action="{% url 'post:post_delete' post.pk %}" method="post">
+                        {% csrf_token %}
+                        <input type="submit" class="post-delete" value="삭제">
+                    </form>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+
+    </header>
+
+    <div class="img_section">
+        <div class="trans_inner">
+            <div><img src="{{ post.photo.url }}" alt="visual01"></div>
+        </div>
+    </div>
+
+    <div class="bottom_icons">
+        <div class="left_icons">
+            <div class="heart_btn">
+                {% if user in post.like_user_set.all %}
+                <div class="sprite_heart_icon_outline on" name="{{ post.id }}" data-name="heartbeat"></div>
+                {% else %}
+                <div class="sprite_heart_icon_outline" name="{{ post.id }}" data-name="heartbeat"></div>
+                {% endif %}
+            </div>
+            <div class="sprite_bubble_icon"></div>
+            <div class="sprite_share_icon" data-name="share"></div>
+        </div>
+        <div class="right_icon">
+            {% if user in post.bookmark_user_set.all %}
+            <div class="sprite_bookmark_outline on" name="{{ post.id }}" data-name="bookmark"></div>
+            {% else %}
+            <div class="sprite_bookmark_outline" name="{{ post.id }}" data-name="bookmark"></div>
+            {% endif%}
+        </div>
+    </div>
+
+    <div class="likes m_text">
+
+        <span id="like-count-{{ post.id }}">좋아요{{ post.like_count }}개</span>
+        <span id="bookmark-count-{{ post.id }}">북마크{{ post.bookmark_count}}개</span>
+
+    </div>
+
+    <div class="comment_container">
+        <div class="comment" id="comment-list-ajax-post{{post.id}}">
+            {% for comment in post.comment_set.all %}
+            <div class="comment-detail" id="comment{{ comment.id }}">
+                <div class="nick_name m_text">{{ comment.author.profile.nickname}}</div>
+                <div>{{comment.content}}</div>
+                {% if user == comment.author %}
+<input type="button" class="del-comment" data-name="comment_delete" value="삭제" name="{{ comment.id }}">
+                {% endif %}
+            </div>
+            {% endfor %}
+
+        </div>
+        <div class="small_heart">
+            <div class="sprite_small_heart_icon_outline"></div>
+        </div>
+    </div>
+
+    <div class="timer">{{ post.created_at|timesince }}</div>
+
+    <div class="comment_field" id="add-comment-post{{post.id}}">
+        {% if user.is_authenticated %}
+        {{ comment_form }}
+        <input type="text" placeholder="댓글달기...">
+        <div class="upload_btn m_text" name="{{post.id}}" data-name="comment">게시</div>
+        {% else %}
+        {{ comment_form }}
+        <input type="text" placeholder="댓글달기...">
+        <div class="upload_btn m_text" name="{{post.id}}" data-name="comment" onclick="alert('댓글을 작성하려면 로그인이 필요합니다')">게시</div>
+        {% endif%}
+    </div>
+
+</article>
+{% endfor %}
+
+-- post>template>post>post_new.html를 아래와 같이 수정 --
+{% extends "post/layout.html" %}
+{% load static %}
+
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/new_post.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div id="main_container">
+
+        <div class="post_form_container">
+            <form action="#" class="post_form" method="post" enctype="multipart/form-data">
+                <div class="title">
+                    New Post
+                </div>
+                <div class="preview">
+                    <label for="id_photo">
+                        <div class="upload">
+                            <div class="post_btn">
+                                <div class="plus_icon">
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                                <p>포스트 이미지 추가</p>
+                                <canvas id="imageCanvas"></canvas>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                {% csrf_token %}
+                {{ form.as_p }}
+
+                <input type="submit" class="submit_btn" value="저장">
+            </form>
+        </div>
+    </div>
+
+<script>
+var fileInput = document.querySelector("#id_photo")
+fileInput.addEventListener('change', handleImage);
+var canvas = document.getElementById('imageCanvas')
+var ctx = canvas.getContext('2d');
+
+    
+function handleImage(e){
+    var reader = new FileReader();
+    reader.onload = function(event){
+        var img = new Image();
+        img.onload = function(){
+            canvas.width = 300;
+            canvas.height = 300;
+            ctx.drawImage(img,0,0,300,300);
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+}
+
+</script>
+{% endblock %}
+
+
+-- post>template>post>post_edit.html를 아래와 같이 수정 --
+{% extends "post/layout.html" %}
+{% load static %}
+
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/new_post.css' %}">
+{% endblock %}
+
+
+
+{% block content %}
+<div id="main_container">
+    <div class="post_form_container">
+        <form action="#" class="post_form" method="post" enctype="multipart/form-data">
+            <div class="title">
+                Edit Post
+            </div>
+            <div class="preview">
+                <div class="upload">
+                    <div class="post_btn">
+                        {% if post %}
+                            <p><img id="img_id" src="{{ post.photo.url }}" style="width: 300px; height: 300px; object-fit: cover" ></p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            {% csrf_token %}
+            {{ form.as_p }}
+            
+            <input class="submit_btn" type="submit" value="수정완료">
+        </form>
+    </div>
+</div>
+<script>
+    const photo = document.querySelector('#img_id');
+    document.querySelector('#photo-clear_id').remove();
+    document.querySelector("label[for='photo-clear_id']").remove();
+    
+    
+    function upload_img(input) {
+        var reader = new FileReader();
+        if (input.files && input.files[0]){
+            reader.onload = function (e) {
+            photo.setAttribute('src',e.target.result);
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    let idPhoto = document.querySelector('#id_photo');
+    
+    idPhoto.addEventListener('change',function(){
+        upload_img(this);
+    });
+
+</script>
+
+{% endblock %}
+
+
+
+-- post>template>post>my_post_list.html를 아래와 같이 수정 --
+{% extends "post/layout.html" %}
+{% load static %}
+
+{% block head %}
+
+<link rel="stylesheet" href="{% static 'css/mylist.css' %}">
+<link rel="stylesheet" href="{% static 'css/common.css' %}">
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+
+{% endblock %}
+
+{% block content %}
+<div id="main_container">
+
+        <section class="b_inner">
+
+            <div class="hori_cont">
+                <div class="profile_wrap">
+                    <div class="profile_img">
+                        {% if user_profile.picture %}
+                        <img src="{{ user_profile.picture.url }}" alt="착한호랑이">
+                        {% else %}
+                        <img src="{% static 'imgs/img_section/img01.jpg' %}" alt="착한호랑이">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="detail">
+                    <div class="top">
+                        <div class="user_name">{{ user.profile.nickname }}</div>
+                        <a href="{% url 'accounts:logout' %}" class="logout">로그아웃</a>
+                    </div>
+
+                    <ul class="middle">
+                        <li>
+                            <span>게시물</span>
+                            {{ user.post_set.count }}
+                        </li>
+                        <li>
+                            <span>팔로워</span>
+                            {{ user.profile.follower_count }}
+                        </li>
+                        <li>
+                            <span>팔로우</span>
+                            {{ user.profile.following_count }}
+                        </li>
+                    </ul>
+                    <p class="about">
+                        <span class="nick_name on">내가쓴글</span>
+                        <span class="book_mark">북마크</span>
+                    </p>
+
+                </div>
+            </div>
+
+            <div class="mylist_contents contents_container active">
+                
+                {% for post in post_list %}
+                
+                <div class="pic">
+                    <a href="#"><img src="{{ post.photo.url }}" alt=""></a>
+                </div>
+                
+                {% endfor %}
+                
+            </div>
+
+
+            <div class="bookmark_contents contents_container">
+                
+                {% for post in all_post_list %}
+                    {% for bookmark_user in post.bookmark_user_set.all %}
+                    <div class="pic">
+                        {% if user == bookmark_user.profile.user %}
+                            <a href="#"><img src="{{ post.photo.url }}" alt=""></a>
+                        {% endif%}
+                    </div>
+                    {% endfor %}
+                {% endfor%}
+                
+            </div>
+
+
+
+
+        </section>
+    </div>
+
+
+{% endblock %}
+
+{% block js %}
+    <script src="{% static 'js/profile.js' %}"></script>
+{% endblock %}
+
+-- post>template>post>post_detail.html를 아래와 같이 수정 --
+{% extends "post/layout.html" %}
+{% load static %}
+{% load post_extras %}
+
+
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/detail-page.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="main_container">
+        <section class="b_inner">
+            <div class="contents_box">
+                <article class="contents cont01">
+                    <div class="img_section">
+                        <div class="trans_inner">
+                            <div><img src="{{ post.photo.url }}" alt=""></div>
+                        </div>
+                    </div>
+                    <div class="detail--right_box">
+                        <header class="top">
+                            <div class="user_container">
+                                <div class="profile_img">
+                                    {% if post.author.profile.picture %}
+                                    <img src="{{ post.author.profile.picture.url }}" alt="">
+                                    {% else %}
+                                    <img src="{% static 'imgs/thumb.jpeg' %}" alt="">
+                                    {% endif%}
+                                </div>
+                                <div class="user_name">
+                                    <div class="nick_name">{{ post.author.profile.nickname }}</div>
+                                    <div class="country">Seoul, South Korea</div>
+                                </div>
+                            </div>
+                            <div class="sprite_more_icon" data-name="more">
+                                <ul class="more_detail">
+                                    <li>
+                                    {% if user.profile in post.author.profile.get_follower %}
+                                    <input type="submit" class="follow" value="팔로잉" data-name="follow" name="{{ post.author.profile.id }}">
+                                    {% else %}
+                                    <input type="submit" class="follow" value="팔로우" data-name="follow" name="{{ post.author.profile.id }}">
+                                    {% endif %}
+                                    </li>
+                                    {% if post.author == user %}
+                                    <li>
+                                        <a class="post-edit" href="{% url 'post:post_edit' post.pk %}">수정</a>
+                                    </li>
+                                    <li>
+                                        <form class="post-delete-form" action="{% url 'post:post_delete' post.pk %}" method="post">
+                                            {% csrf_token %}
+                                            <input type="submit" class="post-delete" value="삭제">
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </header>
+                        <section class="scroll_section" id="comment-list-ajax-post{{post.id}}">       
+                            {% for comment in post.comment_set.all %}
+                            <div class="user_container-detail" id="comment{{ comment.id }}">
+                                <div class="user"><img src="{{ comment.author.profile.picture.url }}" alt="user"></div>
+                                <div class="comment">
+                                    <span class="user_id">{{ comment.author.profile.nickname }}</span>
+                                    <span>{{ comment.content }}</span>
+                                    <span>
+                                        {% if user == comment.author %}
+                                        <input type="button" class="del-comment" data-name="comment_delete" value="삭제" name="{{ comment.id }}">
+                                        {% endif %}
+                                    </span>
+                                    <div class="time">{{ comment.created_at|timesince }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </section>
+                        
+                        
+                          <div class="bottom_icons">
+                            <div class="left_icons">
+                                <div class="heart_btn">
+                                    {% if user in post.like_user_set.all %}
+                                    <div class="sprite_heart_icon_outline on" name="{{ post.id }}" data-name="heartbeat"></div>
+                                    {% else %}
+                                    <div class="sprite_heart_icon_outline" name="{{ post.id }}" data-name="heartbeat"></div>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="sprite_bubble_icon"></div>
+                                </div>
+                                <!-- <div>
+                                    <div class="sprite_share_icon" data-name="share"></div>
+                                </div> -->
+                            </div>
+
+                            <div class="right_icon">
+                                    {% if user in post.bookmark_user_set.all%}
+                                    <div class="sprite_bookmark_outline on" name="{{ post.id }}" data-name="bookmark"></div>
+                                    {% else %}
+                                    <div class="sprite_bookmark_outline" name="{{ post.id }}" data-name="bookmark"></div>
+                                    {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="count_likes">
+                            
+                            <span id="like-count-{{ post.id }}" class="count">좋아요{{ post.like_count }}개</span>
+                            <span id="bookmark-count-{{ post.id }}" >북마크{{ post.bookmark_count }}개</span>
+                            
+                        </div>
+                        
+                        <div class="timer">{{ post.created_at|timesince }}</div>
+                        <div class="content">{{ post|add_link|safe|linebreaksbr }}</div>
+                        
+
+                        <div class="comment_field" id="add-comment-post{{post.id}}">
+                            {% if user.is_authenticated %}
+                            {{ comment_form }}
+                            <div class="upload_btn m_text" name="{{post.id}}" data-name="comment">게시</div>
+                            {% else %}
+                            {{ comment_form }}
+                            <div class="upload_btn m_text" name="{{post.id}}" data-name="comment" onclick="alert('로그인해주세요')">게시</div>
+                            {% endif %}
+                        </div>
+                        
+                        
+                        
+                    </div>
+                </article>
+            </div>
+        </section>
+    </div>
+
+    <div class="del_pop">
+        <div class="btn_box">
+            <div class="del">삭제</div>
+            <div class="cancel">취소</div>
+        </div>
+   </div>
+{% include "post/script_ajax_detail.html" %}
+{% endblock %}
+
+-- post>template>post>script_ajax_detail.html를 아래와 같이 수정 --
+<script type="text/javascript">
+(function(){
+    const delegation = document.querySelector('.contents_box')
+    
+    
+    
+    function delegationFunc(e) {
+        let elem = e.target;
+        
+        while (!elem.getAttribute('data-name')){
+            elem = elem.parentNode;
+            
+            if (elem.nodeName === 'BODY'){
+                elem = null;
+                return;
+            }
+        }
+        
+        if (elem.matches('[data-name="follow"]')){
+            console.log('팔로우');
+            
+            var pk = elem.getAttribute('name')
+            
+            $.ajax({
+                type: "POST",
+                url: "{% url 'accounts:follow' %}",
+                data: {
+                    'pk': pk,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                },
+                dataType: "json",
+                success: function(response){
+                    // alert('성공!')
+                    if(response.status){
+                        document.querySelector('input.follow[name=\''+pk+'\']').value="팔로잉";
+                    }else{
+                        document.querySelector('input.follow[name=\''+pk+'\']').value="팔로우";
+                    }
+                    
+                
+                    },
+                    error: function(request, status, error){
+                        alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                    },
+                })
+            }else if (elem.matches('[data-name="heartbeat"]')){
+                    var pk = elem.getAttribute('name')
+                    
+                     $.ajax({
+                        type: "POST",
+                        url: "{% url 'post:post_like' %}",
+                        data: {
+                            'pk': pk,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}',
+                        },
+                        dataType: "json",
+                        success: function(response){
+                        // alert('성공!')
+                            var likeCount = document.querySelector('#like-count-'+pk);
+                            likeCount.innerHTML = '좋아요' + response.like_count + '개';
+                            
+
+
+                        },
+                        error: function(request, status, error){
+                            alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                        },
+                    })
+            }else if (elem.matches('[data-name="bookmark"]')){
+                    var pk = elem.getAttribute('name')
+                
+                    $.ajax({
+                            type: "POST",
+                            url: "{% url 'post:post_bookmark' %}",
+                            data: {
+                                'pk': pk,
+                                'csrfmiddlewaretoken': '{{ csrf_token }}',
+                            },
+                            dataType: "json",
+                            success: function (response){
+                                // alert('성공!');
+                                var bookmarkCount = document.querySelector('#bookmark-count-'+pk);
+                                bookmarkCount.innerHTML = '북마크' + response.bookmark_count + '개';
+                            },
+                            error: function(request, status, error){
+                                alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                            },
+                        })
+            }else if (elem.matches('[data-name="comment"]')){
+                var pk = elem.getAttribute('name');
+                var content = document.querySelector('#add-comment-post'+pk+'>input[type=text]').value;
+                
+                if(content.length > 140) {
+                    alert("댓글은 최대 140자 입력 가능합니다. 현재 글자수 :"+content.length);
+                }
+                
+                if(content.length == 0) {
+                    alert("한글자 이상 입력해 주세요. 현재 글자수 :"+content.length);
+                }
+                
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'post:comment_new_detail' %}",
+                    data: {
+                        'pk':pk,
+                        'content': content,
+                        'csrfmiddlewaretoken': '{{ csrf_token}}',
+                    },
+                    dataType: "html",
+                    success: function(data, textStatus, jqXHR){
+                        document.querySelector("#comment-list-ajax-post"+pk).insertAdjacentHTML("afterbegin", data);
+                    },
+                    error: function(reqeust, status, error){
+                        alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                    }, 
+                });
+            }else if(elem.matches('[data-name="comment_delete"]')){
+                var pk = elem.getAttribute('name');
+                
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'post:comment_delete' %}",
+                    data: {
+                        'pk': pk,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}',
+                    },
+                    dataType: "json",
+                    success: function(response){
+                        if(response.status){
+                            document.querySelector('#comment'+pk).remove();
+                        }
+                    
+                    },
+                    error: function(reqeust, status, error){
+                        alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                    }, 
+                })
+                
+            }
+        
+        elem.classList.toggle('on');
+    }
+    
+    delegation.addEventListener('click', delegationFunc);
+})();
+</script>
+
+

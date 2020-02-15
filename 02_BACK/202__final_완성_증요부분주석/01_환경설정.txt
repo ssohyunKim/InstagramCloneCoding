@@ -1,0 +1,74 @@
+mkdir instaclone
+cd instaclone
+pip3 install virtualenv
+virtualenv venv
+source venv/bin/activate
+pip3 list
+pip3 install django
+pip3 list
+django-admin startproject config .
+
+settings.py에서 28번째줄 '*'
+python manage.py migrate
+python manage.py runserver 0:80
+python manage.py createsuperuser
+
+pip install pillow
+pip install pilkit
+pip install django-imagekit
+pip install django-allauth
+
+본격적인 앱 생성 작업
+python manage.py startapp accounts
+python manage.py startapp post
+
+settings.py 수정
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'accounts',
+    'post',
+
+]
+
+settings.py 수정2 - 템플릿 위치 변경
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            os.path.join('BASE_DIR', 'config', 'templates'),
+        ],
+
+settings.py 수정3 - 시간 및 staticfile 위치 변경
+LANGUAGE_CODE = 'ko'
+
+TIME_ZONE = 'Asia/Seoul'
+
+USE_I18N = True
+
+USE_L10N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/3.0/howto/static-files/
+STATIC_URL = '/static/'
+STATICFILE_DIRS = [
+    os.path.join('BASE_DIR', 'config', 'static'),
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+#MEDIA File
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+LOGIN_REDIRECT_URL = '/'

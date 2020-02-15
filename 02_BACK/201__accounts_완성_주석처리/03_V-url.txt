@@ -1,0 +1,71 @@
+-- config>urls.py를 아래와 같이 수정 --
+from django.contrib import admin
+from django.urls import include, path
+from django.conf import settings
+from django.conf.urls.static import static
+
+from django.shortcuts import redirect
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('accounts/', include('accounts.urls')),
+    path('accounts/', include('allauth.urls')),
+]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+-- accounts>urls.py를 아래와 같이 수정 --
+from django.urls import path
+from .views import *
+
+app_name = 'accounts'
+
+urlpatterns = [
+    path('signup/', signup, name='signup'),
+    path('login/', login_check, name='login'),
+    path('logout/', logout, name='logout'),
+]
+
+-- accounts>views.py를 아래와 같이 수정 --
+from django.contrib.auth import authenticate, login
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth import logout as django_logout
+from .forms import SignupForm, LoginForm
+from .models import Profile
+
+import json
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+
+def signup(request):
+    if request.method == 'POST':
+        form = SignupForm(request.POST, request.FILES)
+        if form.is_valid():
+            user = form.save()
+            return redirect('accounts:login')
+    else:
+        form = SignupForm()
+
+def login_check(request):
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+        name = request.POST.get('username')
+        pwd = request.POST.get('password')
+        
+        user = authenticate(username=name, password=pwd)
+        
+        if user is not None:
+            login(request, user)
+            return redirect("/")
+        else:
+            return render(request, 'accounts/login_fail.html')
+    else:
+        form = LoginForm()
+        return render(request, 'accounts/login.html', {"form":form})
+    
+def logout(request):
+    django_logout(request)
+    return redirect("/")
+
